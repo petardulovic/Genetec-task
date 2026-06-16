@@ -18,7 +18,7 @@ export function EventDashboardPage() {
 	const criticalEvents = events.filter(
 		(event) => event.priority === "critical",
 	).length;
-
+	//TODO: Implement actual edit and remove functionality for events
 	const columns = getEventColumns({
 		onEdit: (event) => console.log("Edit:", event),
 		onRemove: (event) => console.log("Remove:", event),

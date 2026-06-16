@@ -8,6 +8,13 @@ type GetEventColumnsParams = {
 	onRemove: (event: Event) => void;
 };
 
+const priorityRank: Record<Event["priority"], number> = {
+	low: 1,
+	medium: 2,
+	high: 3,
+	critical: 4,
+};
+
 function formatLabel(value: string) {
 	return value.charAt(0).toUpperCase() + value.slice(1);
 }
@@ -42,13 +49,16 @@ export function getEventColumns({
 			label: "Title",
 			accessor: "title",
 			sortable: true,
-			filterable: true,
+			filterAccessor: "title",
+			searchable: true,
 			enableHiding: false,
 		},
 		{
 			id: "date",
 			label: "Date",
 			accessor: (event) => formatDate(event.date),
+			filterAccessor: "date",
+			sortAccessor: "date",
 			sortable: true,
 		},
 		{
@@ -57,6 +67,9 @@ export function getEventColumns({
 			cell: (event) => createPill(event.category),
 			sortable: true,
 			filterable: true,
+			filterKey: "categories",
+			filterAccessor: "category",
+			sortAccessor: "category",
 			enableHiding: false,
 		},
 		{
@@ -65,6 +78,9 @@ export function getEventColumns({
 			cell: (event) => createPill(event.status),
 			sortable: true,
 			filterable: true,
+			filterKey: "statuses",
+			filterAccessor: "status",
+			sortAccessor: "status",
 		},
 		{
 			id: "priority",
@@ -72,6 +88,9 @@ export function getEventColumns({
 			cell: (event) => createPill(event.priority),
 			sortable: true,
 			filterable: true,
+			filterKey: "priorities",
+			filterAccessor: "priority",
+			sortAccessor: (event) => priorityRank[event.priority],
 			enableHiding: false,
 		},
 		{

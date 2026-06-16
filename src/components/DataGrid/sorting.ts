@@ -1,35 +1,34 @@
 import type { DataGridColumn, SortDirection, SortState } from "./DataGrid.types";
 
-const priorityRank: Record<string, number> = {
-	low: 1,
-	medium: 2,
-	high: 3,
-	critical: 4,
-};
-
 function isSortableValue(value: unknown): value is string | number | boolean {
 	return ["string", "number", "boolean"].includes(typeof value);
 }
 
-function getSortValue<T>(row: T, column: DataGridColumn<T>) {
-	const rowValue = row[column.id as keyof T];
-	const accessor = column.accessor;
-
-	if (isSortableValue(rowValue)) {
-		return String(rowValue);
+function readColumnValue<T>(
+	row: T,
+	reader?: keyof T | ((row: T) => unknown),
+) {
+	if (!reader) {
+		return undefined;
 	}
 
-	if (typeof accessor === "function") {
-		const accessorValue = accessor(row);
+	if (typeof reader === "function") {
+		return reader(row);
+	}
 
-		if (isSortableValue(accessorValue)) {
-			return String(accessorValue);
-		}
-	} else if (accessor) {
-		const accessorValue = row[accessor];
+	return row[reader];
+}
 
-		if (isSortableValue(accessorValue)) {
-			return String(accessorValue);
+function getSortValue<T>(row: T, column: DataGridColumn<T>) {
+	const values = [
+		readColumnValue(row, column.sortAccessor),
+		row[column.id as keyof T],
+		readColumnValue(row, column.accessor),
+	];
+
+	for (const value of values) {
+		if (isSortableValue(value)) {
+			return String(value);
 		}
 	}
 
@@ -45,18 +44,6 @@ function compareStringValues(
 		numeric: true,
 		sensitivity: "base",
 	});
-
-	return direction === "asc" ? comparison : -comparison;
-}
-
-function comparePriorityValues(
-	firstValue: string,
-	secondValue: string,
-	direction: SortDirection,
-) {
-	const firstRank = priorityRank[firstValue.toLowerCase()] ?? 0;
-	const secondRank = priorityRank[secondValue.toLowerCase()] ?? 0;
-	const comparison = firstRank - secondRank;
 
 	return direction === "asc" ? comparison : -comparison;
 }
@@ -77,16 +64,10 @@ export function sortRows<T>(
 	}
 
 	return [...rows].sort((firstRow, secondRow) =>
-		sortColumn.id === "priority"
-			? comparePriorityValues(
-					getSortValue(firstRow, sortColumn),
-					getSortValue(secondRow, sortColumn),
-					sortState.direction,
-				)
-			: compareStringValues(
-					getSortValue(firstRow, sortColumn),
-					getSortValue(secondRow, sortColumn),
-					sortState.direction,
-				),
+		compareStringValues(
+			getSortValue(firstRow, sortColumn),
+			getSortValue(secondRow, sortColumn),
+			sortState.direction,
+		),
 	);
 }

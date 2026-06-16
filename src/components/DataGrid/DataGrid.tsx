@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import type {
+	DataGridColumn,
 	DataGridFilterableRow,
 	DataGridFilters,
 	DataGridProps,
@@ -23,12 +24,42 @@ const DEFAULT_FILTERS: DataGridFilters = {
 	dateTo: "",
 };
 
-function getUniqueOptions<T extends DataGridFilterableRow>(
-	data: T[],
-	key: "category" | "status" | "priority",
+function getColumnValue<T>(
+	row: T,
+	reader?: keyof T | ((row: T) => string | null | undefined),
 ) {
+	if (!reader) {
+		return undefined;
+	}
+
+	const value = typeof reader === "function" ? reader(row) : row[reader];
+
+	return typeof value === "string" ? value : undefined;
+}
+
+function getFilterColumn<T>(
+	columns: DataGridColumn<T>[],
+	filterKey: "categories" | "statuses" | "priorities",
+) {
+	return columns.find(
+		(column) => column.filterable === true && column.filterKey === filterKey,
+	);
+}
+
+function getUniqueOptions<T>(
+	data: T[],
+	column: DataGridColumn<T> | undefined,
+) {
+	if (!column) {
+		return [];
+	}
+
 	return Array.from(
-		new Set(data.map((row) => row[key]).filter(Boolean) as string[]),
+		new Set(
+			data
+				.map((row) => getColumnValue(row, column.filterAccessor))
+				.filter(Boolean) as string[],
+		),
 	).sort((first, second) => first.localeCompare(second));
 }
 
@@ -48,24 +79,36 @@ function getDateValue(date?: string) {
 
 function filterRows<T extends DataGridFilterableRow>(
 	data: T[],
+	columns: DataGridColumn<T>[],
 	filters: DataGridFilters,
 ) {
 	const searchTerm = filters.search.trim().toLowerCase();
+	const searchableColumns = columns.filter((column) => column.searchable === true);
+	const categoryColumn = getFilterColumn(columns, "categories");
+	const statusColumn = getFilterColumn(columns, "statuses");
+	const priorityColumn = getFilterColumn(columns, "priorities");
+	const dateColumn = columns.find((column) => column.id === "date");
 
 	return data.filter((row) => {
-		const title = row.title?.toLowerCase() ?? "";
-		const rowDate = getDateValue(row.date);
+		const searchableText = searchableColumns
+			.map((column) =>
+				String(getColumnValue(row, column.filterAccessor) ?? "").toLowerCase(),
+			)
+			.join(" ");
+		const rowCategory = getColumnValue(row, categoryColumn?.filterAccessor);
+		const rowStatus = getColumnValue(row, statusColumn?.filterAccessor);
+		const rowPriority = getColumnValue(row, priorityColumn?.filterAccessor);
+		const rowDate = getDateValue(getColumnValue(row, dateColumn?.filterAccessor));
 
 		return (
-			(searchTerm === "" || title.includes(searchTerm)) &&
+			(searchTerm === "" || searchableText.includes(searchTerm)) &&
 			(filters.categories.length === 0 ||
-				(row.category !== undefined &&
-					filters.categories.includes(row.category))) &&
+				(rowCategory !== undefined && filters.categories.includes(rowCategory))) &&
 			(filters.statuses.length === 0 ||
-				(row.status !== undefined && filters.statuses.includes(row.status))) &&
+				(rowStatus !== undefined && filters.statuses.includes(rowStatus))) &&
 			(filters.priorities.length === 0 ||
-				(row.priority !== undefined &&
-					filters.priorities.includes(row.priority))) &&
+				(rowPriority !== undefined &&
+					filters.priorities.includes(rowPriority))) &&
 			(filters.dateFrom === "" || rowDate >= filters.dateFrom) &&
 			(filters.dateTo === "" || rowDate <= filters.dateTo)
 		);
@@ -97,14 +140,30 @@ export function DataGrid<T extends DataGridFilterableRow>({
 		canHide: column.enableHiding !== false,
 	}));
 
-	const categoryOptions = useMemo(
-		() => getUniqueOptions(data, "category"),
-		[data],
+	const categoryColumn = useMemo(
+		() => getFilterColumn(columns, "categories"),
+		[columns],
 	);
-	const statusOptions = useMemo(() => getUniqueOptions(data, "status"), [data]);
+	const statusColumn = useMemo(
+		() => getFilterColumn(columns, "statuses"),
+		[columns],
+	);
+	const priorityColumn = useMemo(
+		() => getFilterColumn(columns, "priorities"),
+		[columns],
+	);
+
+	const categoryOptions = useMemo(
+		() => getUniqueOptions(data, categoryColumn),
+		[data, categoryColumn],
+	);
+	const statusOptions = useMemo(
+		() => getUniqueOptions(data, statusColumn),
+		[data, statusColumn],
+	);
 	const priorityOptions = useMemo(
-		() => getUniqueOptions(data, "priority"),
-		[data],
+		() => getUniqueOptions(data, priorityColumn),
+		[data, priorityColumn],
 	);
 
 	const filteredData = useMemo(() => {
@@ -112,8 +171,8 @@ export function DataGrid<T extends DataGridFilterableRow>({
 			console.warn("No visible columns provided to DataGrid.");
 		}
 
-		return filterRows(data, filters);
-	}, [data, filters, visibleColumns.length]);
+		return filterRows(data, columns, filters);
+	}, [columns, data, filters, visibleColumns.length]);
 	const sortedData = useMemo(
 		() => sortRows(filteredData, columns, sortState),
 		[columns, filteredData, sortState],

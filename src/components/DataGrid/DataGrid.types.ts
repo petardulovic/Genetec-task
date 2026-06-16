@@ -7,7 +7,11 @@ export type DataGridColumn<T> = {
 	accessor?: keyof T | ((row: T) => React.ReactNode);
 	cell?: (row: T) => ReactNode;
 	sortable?: boolean;
+	sortAccessor?: keyof T | ((row: T) => string | number | boolean | null | undefined);
 	filterable?: boolean;
+	filterKey?: "categories" | "statuses" | "priorities";
+	filterAccessor?: keyof T | ((row: T) => string | null | undefined);
+	searchable?: boolean;
 	visible?: boolean;
 	enableHiding?: boolean;
 };
@@ -21,11 +25,6 @@ export type DataGridProps<T> = {
 
 export type DataGridFilterableRow = {
 	id: string;
-	title?: string;
-	date?: string;
-	category?: string;
-	status?: string;
-	priority?: string;
 };
 
 export type EventFilters = {
