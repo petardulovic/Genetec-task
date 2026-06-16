@@ -1,0 +1,160 @@
+.events-page {
+	min-height: 100svh;
+	padding: 0 36px 40px;
+	background: #f8fafc;
+}
+
+.product-bar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 44px;
+	color: #0b63ce;
+	font-size: 15px;
+	font-weight: 800;
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.page-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	padding: 22px 0 20px;
+}
+
+.page-heading h1 {
+	margin: 0;
+	color: #111827;
+	font-size: 26px;
+	font-weight: 800;
+	line-height: 1.2;
+}
+
+.page-heading p {
+	margin-top: 5px;
+	color: #64748b;
+	font-size: 14px;
+}
+
+.create-event-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 36px;
+	padding: 0 16px;
+	border: 0;
+	border-radius: 5px;
+	color: #ffffff;
+	background: #126be8;
+	box-shadow: 0 7px 14px rgba(18, 107, 232, 0.2);
+	font: inherit;
+	font-size: 14px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.create-event-button:hover {
+	background: #0b5fcf;
+}
+
+.create-event-button span {
+	font-size: 18px;
+	font-weight: 500;
+	line-height: 1;
+}
+
+.event-summary {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.summary-card {
+	display: flex;
+	align-items: center;
+	gap: 22px;
+	min-height: 96px;
+	box-sizing: border-box;
+	padding: 20px 24px;
+	border: 1px solid #e5e7eb;
+	border-radius: 6px;
+	background: #ffffff;
+	box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
+}
+
+.summary-symbol {
+	display: inline-grid;
+	width: 48px;
+	height: 48px;
+	place-items: center;
+	border-radius: 50%;
+	font-size: 12px;
+	font-weight: 800;
+}
+
+.summary-symbol svg {
+	width: 20px;
+	height: 20px;
+}
+
+.blue-summary {
+	color: #0b63ce;
+	background: #eaf3ff;
+}
+
+.green-summary {
+	color: #087a43;
+	background: #ddf7ea;
+}
+
+.red-summary {
+	color: #dc2626;
+	background: #fee2e2;
+}
+
+.summary-card h2 {
+	margin: 0 0 4px;
+	color: #111827;
+	font-size: 13px;
+	font-weight: 800;
+}
+
+.summary-card strong {
+	display: block;
+	color: #126be8;
+	font-size: 27px;
+	font-weight: 800;
+	line-height: 1;
+}
+
+.summary-card:nth-child(2) strong {
+	color: #16a34a;
+}
+
+.summary-card:nth-child(3) strong {
+	color: #dc2626;
+}
+
+.summary-card p {
+	margin-top: 4px;
+	color: #64748b;
+	font-size: 12px;
+}
+
+@media (max-width: 860px) {
+	.events-page {
+		padding-inline: 18px;
+	}
+
+	.page-heading {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.event-summary {
+		grid-template-columns: 1fr;
+	}
+}

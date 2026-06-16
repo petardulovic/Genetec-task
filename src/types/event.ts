@@ -1,6 +1,11 @@
-export const EVENT_STATUSES = ["draft", "scheduled", "completed", "cancelled"];
+export const EVENT_STATUSES = [
+	"draft",
+	"scheduled",
+	"completed",
+	"cancelled",
+] as const;
 
-export const EVENT_PRIORITIES = ["low", "medium", "high", "critical"];
+export const EVENT_PRIORITIES = ["low", "medium", "high", "critical"] as const;
 
 export const EVENT_CATEGORIES = [
 	"meeting",
@@ -8,7 +13,7 @@ export const EVENT_CATEGORIES = [
 	"security",
 	"system",
 	"incident",
-];
+] as const;
 
 export type EventStatus = (typeof EVENT_STATUSES)[number];
 

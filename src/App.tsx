@@ -1,4 +1,3 @@
-import "./App.css";
 import { EventDashboardPage } from "./pages/EventDashboard";
 
 function App() {
