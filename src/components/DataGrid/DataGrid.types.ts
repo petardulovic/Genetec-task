@@ -1,15 +1,16 @@
-import type { EventCategory, EventPriority, EventStatus } from "@/types/event";
 import type { ReactNode } from "react";
 
 export type DataGridColumn<T> = {
 	id: string;
 	label: string;
-	accessor?: keyof T | ((row: T) => React.ReactNode);
+	accessor?: keyof T | ((row: T) => ReactNode);
 	cell?: (row: T) => ReactNode;
 	sortable?: boolean;
-	sortAccessor?: keyof T | ((row: T) => string | number | boolean | null | undefined);
+	sortAccessor?:
+		| keyof T
+		| ((row: T) => string | number | boolean | null | undefined);
 	filterable?: boolean;
-	filterKey?: "categories" | "statuses" | "priorities";
+	filterKey?: "categories" | "statuses" | "priorities" | "date";
 	filterAccessor?: keyof T | ((row: T) => string | null | undefined);
 	searchable?: boolean;
 	visible?: boolean;
@@ -25,14 +26,6 @@ export type DataGridProps<T> = {
 
 export type DataGridFilterableRow = {
 	id: string;
-};
-
-export type EventFilters = {
-	statuses: EventStatus[];
-	priorities: EventPriority[];
-	categories: EventCategory[];
-	dateFrom: string;
-	dateTo: string;
 };
 
 export type DataGridFilters = {

@@ -1,7 +1,16 @@
 import { DataGrid } from "@/components/DataGrid/DataGrid";
+import { AddOrEditEventForm } from "@/components/EventForm/AddOrEditEventForm";
+import { Toast } from "@/components/Toast/Toast";
 import { getEventColumns } from "@/data/eventColumns";
 import { generateMockEvents } from "@/utils/mockDataGenerator";
-import { useState, type ReactNode } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+	type ReactNode,
+} from "react";
+import type { CreateEventPayload, Event } from "@/types/event";
 import "./EventDashboard.css";
 
 import {
@@ -11,18 +20,93 @@ import {
 } from "@radix-ui/react-icons";
 
 export function EventDashboardPage() {
-	const [events] = useState(() => generateMockEvents(200));
+	const [events, setEvents] = useState(() => generateMockEvents(200));
+	const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+	const [isEventFormOpen, setIsEventFormOpen] = useState(false);
+	const [toast, setToast] = useState<{ id: string; message: string } | null>(
+		null,
+	);
 	const scheduledEvents = events.filter(
 		(event) => event.status === "scheduled",
 	).length;
 	const criticalEvents = events.filter(
 		(event) => event.priority === "critical",
 	).length;
-	//TODO: Implement actual edit and remove functionality for events
-	const columns = getEventColumns({
-		onEdit: (event) => console.log("Edit:", event),
-		onRemove: (event) => console.log("Remove:", event),
-	});
+
+	useEffect(() => {
+		if (!toast) {
+			return;
+		}
+
+		const timeoutId = window.setTimeout(() => {
+			setToast(null);
+		}, 3000);
+
+		return () => window.clearTimeout(timeoutId);
+	}, [toast]);
+
+	const showToast = useCallback((message: string) => {
+		setToast({
+			id: crypto.randomUUID(),
+			message,
+		});
+	}, []);
+
+	const handleCreateEvent = useCallback(() => {
+		setSelectedEvent(null);
+		setIsEventFormOpen(true);
+	}, []);
+
+	const handleEditEvent = useCallback((event: Event) => {
+		setSelectedEvent(event);
+		setIsEventFormOpen(true);
+	}, []);
+
+	const handleRemoveEvent = useCallback((event: Event) => {
+		setEvents((currentEvents) =>
+			currentEvents.filter((currentEvent) => currentEvent.id !== event.id),
+		);
+	}, []);
+
+	const handleCancelEventForm = useCallback(() => {
+		setIsEventFormOpen(false);
+		setSelectedEvent(null);
+	}, []);
+
+	const handleSaveEvent = useCallback(
+		(payload: CreateEventPayload, eventId?: string) => {
+			if (eventId) {
+				setEvents((currentEvents) =>
+					currentEvents.map((event) =>
+						event.id === eventId ? { ...event, ...payload } : event,
+					),
+				);
+				showToast("Event updated successfully");
+			} else {
+				setEvents((currentEvents) => [
+					{
+						id: crypto.randomUUID(),
+						...payload,
+					},
+					...currentEvents,
+				]);
+				showToast("Event created successfully");
+			}
+
+			setIsEventFormOpen(false);
+			setSelectedEvent(null);
+		},
+		[showToast],
+	);
+
+	const columns = useMemo(
+		() =>
+			getEventColumns({
+				onEdit: handleEditEvent,
+				onRemove: handleRemoveEvent,
+			}),
+		[handleEditEvent, handleRemoveEvent],
+	);
 
 	return (
 		<main className="events-page">
@@ -36,7 +120,11 @@ export function EventDashboardPage() {
 					<p>Manage and monitor scheduled system events</p>
 				</div>
 
-				<button type="button" className="create-event-button">
+				<button
+					type="button"
+					className="create-event-button"
+					onClick={handleCreateEvent}
+				>
 					<span>+</span>
 					New Event
 				</button>
@@ -67,6 +155,18 @@ export function EventDashboardPage() {
 			</section>
 
 			<DataGrid data={events} columns={columns} />
+
+			{isEventFormOpen ? (
+				<AddOrEditEventForm
+					key={selectedEvent?.id ?? "new-event"}
+					open={isEventFormOpen}
+					event={selectedEvent}
+					onCancel={handleCancelEventForm}
+					onSave={handleSaveEvent}
+				/>
+			) : null}
+
+			<Toast key={toast?.id} message={toast?.message ?? ""} />
 		</main>
 	);
 }

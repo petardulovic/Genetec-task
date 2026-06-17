@@ -1,4 +1,3 @@
-import React from "react";
 import { RowActions } from "@/components/DataGrid/RowActions";
 import type { DataGridColumn } from "@/components/DataGrid/DataGrid.types";
 import type { Event } from "@/types/event";
@@ -30,13 +29,7 @@ function formatDate(date: string) {
 }
 
 function createPill(value: string) {
-	return React.createElement(
-		"span",
-		{
-			className: `pill ${value}-pill`,
-		},
-		formatLabel(value),
-	);
+	return <span className={`pill ${value}-pill`}>{formatLabel(value)}</span>;
 }
 
 export function getEventColumns({
@@ -57,6 +50,8 @@ export function getEventColumns({
 			id: "date",
 			label: "Date",
 			accessor: (event) => formatDate(event.date),
+			filterable: true,
+			filterKey: "date",
 			filterAccessor: "date",
 			sortAccessor: "date",
 			sortable: true,

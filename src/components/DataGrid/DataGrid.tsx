@@ -39,17 +39,14 @@ function getColumnValue<T>(
 
 function getFilterColumn<T>(
 	columns: DataGridColumn<T>[],
-	filterKey: "categories" | "statuses" | "priorities",
+	filterKey: NonNullable<DataGridColumn<T>["filterKey"]>,
 ) {
 	return columns.find(
 		(column) => column.filterable === true && column.filterKey === filterKey,
 	);
 }
 
-function getUniqueOptions<T>(
-	data: T[],
-	column: DataGridColumn<T> | undefined,
-) {
+function getUniqueOptions<T>(data: T[], column: DataGridColumn<T> | undefined) {
 	if (!column) {
 		return [];
 	}
@@ -83,11 +80,13 @@ function filterRows<T extends DataGridFilterableRow>(
 	filters: DataGridFilters,
 ) {
 	const searchTerm = filters.search.trim().toLowerCase();
-	const searchableColumns = columns.filter((column) => column.searchable === true);
+	const searchableColumns = columns.filter(
+		(column) => column.searchable === true,
+	);
 	const categoryColumn = getFilterColumn(columns, "categories");
 	const statusColumn = getFilterColumn(columns, "statuses");
 	const priorityColumn = getFilterColumn(columns, "priorities");
-	const dateColumn = columns.find((column) => column.id === "date");
+	const dateColumn = getFilterColumn(columns, "date");
 
 	return data.filter((row) => {
 		const searchableText = searchableColumns
@@ -98,12 +97,15 @@ function filterRows<T extends DataGridFilterableRow>(
 		const rowCategory = getColumnValue(row, categoryColumn?.filterAccessor);
 		const rowStatus = getColumnValue(row, statusColumn?.filterAccessor);
 		const rowPriority = getColumnValue(row, priorityColumn?.filterAccessor);
-		const rowDate = getDateValue(getColumnValue(row, dateColumn?.filterAccessor));
+		const rowDate = getDateValue(
+			getColumnValue(row, dateColumn?.filterAccessor),
+		);
 
 		return (
 			(searchTerm === "" || searchableText.includes(searchTerm)) &&
 			(filters.categories.length === 0 ||
-				(rowCategory !== undefined && filters.categories.includes(rowCategory))) &&
+				(rowCategory !== undefined &&
+					filters.categories.includes(rowCategory))) &&
 			(filters.statuses.length === 0 ||
 				(rowStatus !== undefined && filters.statuses.includes(rowStatus))) &&
 			(filters.priorities.length === 0 ||
@@ -167,12 +169,9 @@ export function DataGrid<T extends DataGridFilterableRow>({
 	);
 
 	const filteredData = useMemo(() => {
-		if (visibleColumns.length === 0) {
-			console.warn("No visible columns provided to DataGrid.");
-		}
-
 		return filterRows(data, columns, filters);
-	}, [columns, data, filters, visibleColumns.length]);
+	}, [columns, data, filters]);
+
 	const sortedData = useMemo(
 		() => sortRows(filteredData, columns, sortState),
 		[columns, filteredData, sortState],
