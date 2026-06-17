@@ -30,12 +30,15 @@ function getRandomItem<T>(items: readonly T[]): T {
 	return items[Math.floor(Math.random() * items.length)];
 }
 
-function getRandomDate(): string {
+function getRandomDateTime(): string {
 	const today = new Date();
 	const daysOffset = Math.floor(Math.random() * 30) - 10;
+	const hour = Math.floor(Math.random() * 24);
+	const minute = Math.floor(Math.random() * 12) * 5;
 
 	const date = new Date(today);
 	date.setDate(today.getDate() + daysOffset);
+	date.setHours(hour, minute, 0, 0);
 
 	return date.toISOString();
 }
@@ -44,7 +47,7 @@ export function generateMockEvents(count: number): Event[] {
 	return Array.from({ length: count }, (_, index) => ({
 		id: crypto.randomUUID(),
 		title: `${getRandomItem(eventTitles)} #${index + 1}`,
-		date: getRandomDate(),
+		date: getRandomDateTime(),
 		category: getRandomItem(EVENT_CATEGORIES),
 		status: getRandomItem(EVENT_STATUSES),
 		priority: getRandomItem(EVENT_PRIORITIES),

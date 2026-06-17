@@ -1,5 +1,6 @@
 import { DataGrid } from "@/components/DataGrid/DataGrid";
 import { AddOrEditEventForm } from "@/components/EventForm/AddOrEditEventForm";
+import { Timeline } from "@/components/Timeline/Timeline";
 import { Toast } from "@/components/Toast/Toast";
 import { getEventColumns } from "@/data/eventColumns";
 import { generateMockEvents } from "@/utils/mockDataGenerator";
@@ -123,8 +124,7 @@ export function EventDashboardPage() {
 				<button
 					type="button"
 					className="create-event-button"
-					onClick={handleCreateEvent}
-				>
+					onClick={handleCreateEvent}>
 					<span>+</span>
 					New Event
 				</button>
@@ -156,6 +156,7 @@ export function EventDashboardPage() {
 
 			<DataGrid data={events} columns={columns} />
 
+			<Timeline events={events} />
 			{isEventFormOpen ? (
 				<AddOrEditEventForm
 					key={selectedEvent?.id ?? "new-event"}
