@@ -1,5 +1,6 @@
 import { DataGrid } from "@/components/DataGrid/DataGrid";
 import { AddOrEditEventForm } from "@/components/EventForm/AddOrEditEventForm";
+import { Pill } from "@/components/Pill/Pill";
 import { Timeline } from "@/components/Timeline/Timeline";
 import { Toast } from "@/components/Toast/Toast";
 import { getEventColumns } from "@/data/eventColumns";
@@ -24,6 +25,8 @@ export function EventDashboardPage() {
 	const [events, setEvents] = useState(() => generateMockEvents(200));
 	const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 	const [isEventFormOpen, setIsEventFormOpen] = useState(false);
+	const [isGridLoading, setIsGridLoading] = useState(true);
+	const [gridError, setGridError] = useState<string | null>(null);
 	const [toast, setToast] = useState<{ id: string; message: string } | null>(
 		null,
 	);
@@ -33,6 +36,14 @@ export function EventDashboardPage() {
 	const criticalEvents = events.filter(
 		(event) => event.priority === "critical",
 	).length;
+
+	useEffect(() => {
+		const timeoutId = window.setTimeout(() => {
+			setIsGridLoading(false);
+		}, 900);
+
+		return () => window.clearTimeout(timeoutId);
+	}, []);
 
 	useEffect(() => {
 		if (!toast) {
@@ -121,13 +132,27 @@ export function EventDashboardPage() {
 					<p>Manage and monitor scheduled system events</p>
 				</div>
 
-				<button
-					type="button"
-					className="create-event-button"
-					onClick={handleCreateEvent}>
-					<span>+</span>
-					New Event
-				</button>
+				<div className="page-actions">
+					<button
+						type="button"
+						className="create-event-button"
+						onClick={handleCreateEvent}>
+						<span>+</span>
+						New Event
+					</button>
+					<button
+						type="button"
+						className="demo-state-button"
+						onClick={() =>
+							setGridError((currentError) =>
+								currentError
+									? null
+									: "Demo error: events could not be loaded.",
+							)
+						}>
+						{gridError ? "Clear error" : "Simulate error"}
+					</button>
+				</div>
 			</section>
 
 			<section className="event-summary" aria-label="Event summary">
@@ -154,9 +179,26 @@ export function EventDashboardPage() {
 				/>
 			</section>
 
-			<DataGrid data={events} columns={columns} />
+			<DataGrid
+				data={events}
+				columns={columns}
+				loading={isGridLoading}
+				error={gridError}
+			/>
 
-			<Timeline events={events} />
+			<Timeline
+				items={events}
+				getId={(event) => event.id}
+				getDate={(event) => event.date}
+				getTitle={(event) => event.title}
+				renderPill={(event) => (
+					<>
+						<Pill group="category" value={event.category} />
+						<Pill group="status" value={event.status} />
+						<Pill group="priority" value={event.priority} />
+					</>
+				)}
+			/>
 			{isEventFormOpen ? (
 				<AddOrEditEventForm
 					key={selectedEvent?.id ?? "new-event"}

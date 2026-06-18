@@ -37,6 +37,13 @@
 	font-size: 14px;
 }
 
+.page-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	justify-content: flex-end;
+}
+
 .create-event-button {
 	display: inline-flex;
 	align-items: center;
@@ -53,6 +60,28 @@
 	font-size: 14px;
 	font-weight: 700;
 	cursor: pointer;
+}
+
+.demo-state-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 36px;
+	border: 1px solid #d9e2ec;
+	border-radius: 5px;
+	padding: 0 14px;
+	color: #334155;
+	background: #ffffff;
+	font: inherit;
+	font-size: 14px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.demo-state-button:hover {
+	border-color: #1d72e8;
+	color: #0b63ce;
+	background: #f4f8ff;
 }
 
 .create-event-button:hover {
