@@ -9,9 +9,5 @@ export function Toast({ message }: ToastProps) {
 		return null;
 	}
 
-	return (
-		<div className="toast" role="status" aria-live="polite">
-			{message}
-		</div>
-	);
+	return <div className="toast" role="status">{message}</div>;
 }

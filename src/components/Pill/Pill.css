@@ -1,0 +1,75 @@
+.pill {
+	display: inline-flex;
+	align-items: center;
+	min-height: 20px;
+	padding: 0 8px;
+	border-radius: 4px;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.category-meeting-pill {
+	color: #0b63ce;
+	background: #e8f1ff;
+}
+
+.category-maintenance-pill {
+	color: #9a5b00;
+	background: #fff3d8;
+}
+
+.category-security-pill {
+	color: #075985;
+	background: #e0f2fe;
+}
+
+.category-system-pill {
+	color: #6941c6;
+	background: #f0eaff;
+}
+
+.category-incident-pill {
+	color: #c02626;
+	background: #ffe6e6;
+}
+
+.status-draft-pill {
+	color: #64748b;
+	background: #eef2f7;
+}
+
+.status-scheduled-pill {
+	color: #0369a1;
+	background: #e0f2fe;
+}
+
+.status-completed-pill {
+	color: #087a43;
+	background: #dcfce7;
+}
+
+.status-cancelled-pill {
+	color: #b42318;
+	background: #fee4e2;
+}
+
+.priority-low-pill {
+	color: #166534;
+	background: #dcfce7;
+}
+
+.priority-medium-pill {
+	color: #9a5b00;
+	background: #fff3d8;
+}
+
+.priority-high-pill {
+	color: #c2410c;
+	background: #ffedd5;
+}
+
+.priority-critical-pill {
+	color: #dc2626;
+	background: #fee2e2;
+}
