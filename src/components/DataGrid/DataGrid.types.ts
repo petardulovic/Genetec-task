@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
 
+export type DataGridColumnFilter = {
+	type: "multi-select" | "date-range";
+	key: string;
+	label?: string;
+};
+
 export type DataGridColumn<T> = {
 	id: string;
 	label: string;
@@ -10,7 +16,7 @@ export type DataGridColumn<T> = {
 		| keyof T
 		| ((row: T) => string | number | boolean | null | undefined);
 	filterable?: boolean;
-	filterKey?: "categories" | "statuses" | "priorities" | "date";
+	filter?: DataGridColumnFilter;
 	filterAccessor?: keyof T | ((row: T) => string | null | undefined);
 	searchable?: boolean;
 	visible?: boolean;
@@ -30,11 +36,26 @@ export type DataGridFilterableRow = {
 
 export type DataGridFilters = {
 	search: string;
-	statuses: string[];
-	priorities: string[];
-	categories: string[];
-	dateFrom: string;
-	dateTo: string;
+	multiSelect: Record<string, string[]>;
+	dateRanges: Record<string, DataGridDateRangeFilter>;
+};
+
+export type DataGridDateRangeFilter = {
+	from: string;
+	to: string;
+};
+
+export type MultiSelectFilterOption = {
+	key: string;
+	label: string;
+	options: string[];
+	values: string[];
+};
+
+export type DateRangeFilterOption = {
+	key: string;
+	label: string;
+	value: DataGridDateRangeFilter;
 };
 
 export type ColumnVisibilityOption = {

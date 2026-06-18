@@ -1,7 +1,12 @@
 import type { DataGridColumn, SortDirection, SortState } from "./DataGrid.types";
 
-function isSortableValue(value: unknown): value is string | number | boolean {
-	return ["string", "number", "boolean"].includes(typeof value);
+type SortableValue = string | number | boolean | Date;
+
+function isSortableValue(value: unknown): value is SortableValue {
+	return (
+		["string", "number", "boolean"].includes(typeof value) ||
+		value instanceof Date
+	);
 }
 
 function readColumnValue<T>(
@@ -28,24 +33,46 @@ function getSortValue<T>(row: T, column: DataGridColumn<T>) {
 
 	for (const value of values) {
 		if (isSortableValue(value)) {
-			return String(value);
+			return value;
 		}
 	}
 
 	return "";
 }
 
-function compareStringValues(
-	firstValue: string,
-	secondValue: string,
+function compareSortableValues(
+	firstValue: SortableValue,
+	secondValue: SortableValue,
 	direction: SortDirection,
 ) {
-	const comparison = firstValue.localeCompare(secondValue, undefined, {
-		numeric: true,
-		sensitivity: "base",
-	});
+	const comparison = getComparison(firstValue, secondValue);
 
 	return direction === "asc" ? comparison : -comparison;
+}
+
+function getComparison(firstValue: SortableValue, secondValue: SortableValue) {
+	if (firstValue instanceof Date && secondValue instanceof Date) {
+		return firstValue.getTime() - secondValue.getTime();
+	}
+
+	if (
+		typeof firstValue === "number" &&
+		typeof secondValue === "number"
+	) {
+		return firstValue - secondValue;
+	}
+
+	if (
+		typeof firstValue === "boolean" &&
+		typeof secondValue === "boolean"
+	) {
+		return Number(firstValue) - Number(secondValue);
+	}
+
+	return String(firstValue).localeCompare(String(secondValue), undefined, {
+			numeric: true,
+			sensitivity: "base",
+	});
 }
 
 export function sortRows<T>(
@@ -64,7 +91,7 @@ export function sortRows<T>(
 	}
 
 	return [...rows].sort((firstRow, secondRow) =>
-		compareStringValues(
+		compareSortableValues(
 			getSortValue(firstRow, sortColumn),
 			getSortValue(secondRow, sortColumn),
 			sortState.direction,

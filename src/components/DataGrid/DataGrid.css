@@ -46,7 +46,7 @@
 
 .filter-fields {
 	display: grid;
-	grid-template-columns: minmax(220px, 1fr) 82px 140px 140px auto;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 	gap: 10px;
 	align-items: end;
 }
@@ -287,7 +287,7 @@
 }
 
 .date-column {
-	width: 17%;
+	width: 16%;
 }
 
 .category-column,
@@ -311,66 +311,6 @@
 
 .data-grid tbody tr:last-child td {
 	border-bottom: 0;
-}
-
-.pill {
-	display: inline-flex;
-	align-items: center;
-	min-height: 20px;
-	padding: 0 8px;
-	border-radius: 4px;
-	font-size: 12px;
-	font-weight: 700;
-	line-height: 1;
-}
-
-.security-pill,
-.meeting-pill,
-.scheduled-pill {
-	color: #0b63ce;
-	background: #e8f1ff;
-}
-
-.maintenance-pill,
-.medium-pill {
-	color: #9a5b00;
-	background: #fff3d8;
-}
-
-.system-pill {
-	color: #6941c6;
-	background: #f0eaff;
-}
-
-.incident-pill {
-	color: #c02626;
-	background: #ffe6e6;
-}
-
-.completed-pill,
-.low-pill {
-	color: #087a43;
-	background: #dcfce7;
-}
-
-.draft-pill {
-	color: #64748b;
-	background: #eef2f7;
-}
-
-.cancelled-pill {
-	color: #b42318;
-	background: #fee4e2;
-}
-
-.high-pill {
-	color: #c2410c;
-	background: #ffedd5;
-}
-
-.critical-pill {
-	color: #dc2626;
-	background: #fee2e2;
 }
 
 .table-pagination {

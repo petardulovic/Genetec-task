@@ -3,24 +3,23 @@ import { CheckIcon, ChevronDownIcon } from "@radix-ui/react-icons";
 
 import type {
 	ColumnVisibilityOption,
+	DateRangeFilterOption,
 	DataGridFilters,
+	MultiSelectFilterOption,
 	PageSize,
 } from "./DataGrid.types";
 
 type FilterToolbarProps = {
 	filters: DataGridFilters;
 	pageSize: PageSize;
-	categoryOptions: string[];
-	statusOptions: string[];
-	priorityOptions: string[];
+	dateRangeFilters: DateRangeFilterOption[];
+	multiSelectFilters: MultiSelectFilterOption[];
 	columnOptions: ColumnVisibilityOption[];
 	onFiltersChange: (filters: DataGridFilters) => void;
 	onPageSizeChange: (pageSize: PageSize) => void;
 	onColumnVisibilityChange: (columnId: string, isVisible: boolean) => void;
 	onResetFilters: () => void;
 };
-
-type FilterKey = "categories" | "statuses" | "priorities";
 
 const PAGE_SIZE_OPTIONS: PageSize[] = [10, 25, 50, 100];
 
@@ -44,9 +43,8 @@ function getDropdownLabel(label: string, selectedCount: number) {
 export function FilterToolbar({
 	filters,
 	pageSize,
-	categoryOptions,
-	statusOptions,
-	priorityOptions,
+	dateRangeFilters,
+	multiSelectFilters,
 	columnOptions,
 	onFiltersChange,
 	onPageSizeChange,
@@ -55,16 +53,20 @@ export function FilterToolbar({
 }: FilterToolbarProps) {
 	const hasActiveFilters =
 		filters.search.trim() !== "" ||
-		filters.categories.length > 0 ||
-		filters.statuses.length > 0 ||
-		filters.priorities.length > 0 ||
-		filters.dateFrom !== "" ||
-		filters.dateTo !== "";
+		Object.values(filters.multiSelect).some((values) => values.length > 0) ||
+		Object.values(filters.dateRanges).some(
+			(range) => range.from !== "" || range.to !== "",
+		);
 
-	function handleFilterToggle(filterKey: FilterKey, value: string) {
+	function handleFilterToggle(filterKey: string, value: string) {
+		const currentValues = filters.multiSelect[filterKey] ?? [];
+
 		onFiltersChange({
 			...filters,
-			[filterKey]: toggleFilterValue(filters[filterKey], value),
+			multiSelect: {
+				...filters.multiSelect,
+				[filterKey]: toggleFilterValue(currentValues, value),
+			},
 		});
 	}
 
@@ -72,11 +74,11 @@ export function FilterToolbar({
 		<section className="filters-panel" aria-label="Data grid filters">
 			<div className="filter-fields">
 				<label className="filter-control search-control">
-					<span>Search title</span>
+					<span>Search</span>
 					<input
 						type="search"
 						value={filters.search}
-						placeholder="Search by title"
+						placeholder="Search rows"
 						onChange={(event) =>
 							onFiltersChange({
 								...filters,
@@ -92,8 +94,7 @@ export function FilterToolbar({
 						value={pageSize}
 						onChange={(event) =>
 							onPageSizeChange(Number(event.target.value) as PageSize)
-						}
-					>
+						}>
 						{PAGE_SIZE_OPTIONS.map((option) => (
 							<option key={option} value={option}>
 								{option}
@@ -102,59 +103,42 @@ export function FilterToolbar({
 					</select>
 				</label>
 
-				<DatePicker
-					label="Date from"
-					value={filters.dateFrom}
-					onChange={(dateFrom) =>
-						onFiltersChange({
-							...filters,
-							dateFrom,
-						})
-					}
-				/>
-
-				<DatePicker
-					label="Date to"
-					value={filters.dateTo}
-					onChange={(dateTo) =>
-						onFiltersChange({
-							...filters,
-							dateTo,
-						})
-					}
-				/>
+				{dateRangeFilters.map((filter) => (
+					<DateRangePicker
+						key={filter.key}
+						label={filter.label}
+						value={filter.value}
+						onChange={(value) =>
+							onFiltersChange({
+								...filters,
+								dateRanges: {
+									...filters.dateRanges,
+									[filter.key]: value,
+								},
+							})
+						}
+					/>
+				))}
 
 				<button
 					type="button"
 					className="clear-filters-button"
 					disabled={!hasActiveFilters}
-					onClick={onResetFilters}
-				>
+					onClick={onResetFilters}>
 					Reset
 				</button>
 			</div>
 
 			<div className="filter-menus">
-				<MultiSelectDropdown
-					label="Category"
-					options={categoryOptions}
-					values={filters.categories}
-					onToggle={(value) => handleFilterToggle("categories", value)}
-				/>
-
-				<MultiSelectDropdown
-					label="Status"
-					options={statusOptions}
-					values={filters.statuses}
-					onToggle={(value) => handleFilterToggle("statuses", value)}
-				/>
-
-				<MultiSelectDropdown
-					label="Priority"
-					options={priorityOptions}
-					values={filters.priorities}
-					onToggle={(value) => handleFilterToggle("priorities", value)}
-				/>
+				{multiSelectFilters.map((filter) => (
+					<MultiSelectDropdown
+						key={filter.key}
+						label={filter.label}
+						options={filter.options}
+						values={filter.values}
+						onToggle={(value) => handleFilterToggle(filter.key, value)}
+					/>
+				))}
 
 				<ColumnsDropdown
 					columns={columnOptions}
@@ -165,22 +149,35 @@ export function FilterToolbar({
 	);
 }
 
-type DatePickerProps = {
+type DateRangePickerProps = {
 	label: string;
-	value: string;
-	onChange: (value: string) => void;
+	value: {
+		from: string;
+		to: string;
+	};
+	onChange: (value: { from: string; to: string }) => void;
 };
 
-function DatePicker({ label, value, onChange }: DatePickerProps) {
+function DateRangePicker({ label, value, onChange }: DateRangePickerProps) {
 	return (
-		<label className="filter-control">
-			<span>{label}</span>
-			<input
-				type="date"
-				value={value}
-				onChange={(event) => onChange(event.target.value)}
-			/>
-		</label>
+		<>
+			<label className="filter-control">
+				<span>{label} from</span>
+				<input
+					type="date"
+					value={value.from}
+					onChange={(event) => onChange({ ...value, from: event.target.value })}
+				/>
+			</label>
+			<label className="filter-control">
+				<span>{label} to</span>
+				<input
+					type="date"
+					value={value.to}
+					onChange={(event) => onChange({ ...value, to: event.target.value })}
+				/>
+			</label>
+		</>
 	);
 }
 
@@ -208,16 +205,14 @@ function MultiSelectDropdown({
 				<DropdownMenu.Content
 					className="filter-menu"
 					align="start"
-					sideOffset={6}
-				>
+					sideOffset={6}>
 					{options.map((option) => (
 						<DropdownMenu.CheckboxItem
 							key={option}
 							className="filter-option"
 							checked={values.includes(option)}
 							onCheckedChange={() => onToggle(option)}
-							onSelect={(event) => event.preventDefault()}
-						>
+							onSelect={(event) => event.preventDefault()}>
 							<span className="option-checkmark" aria-hidden="true">
 								<CheckIcon />
 							</span>
@@ -240,7 +235,9 @@ function ColumnsDropdown({
 	onColumnVisibilityChange,
 }: ColumnsDropdownProps) {
 	const hideableColumns = columns.filter((column) => column.canHide);
-	const visibleCount = hideableColumns.filter((column) => column.isVisible).length;
+	const visibleCount = hideableColumns.filter(
+		(column) => column.isVisible,
+	).length;
 
 	return (
 		<DropdownMenu.Root>
@@ -253,8 +250,7 @@ function ColumnsDropdown({
 				<DropdownMenu.Content
 					className="filter-menu"
 					align="start"
-					sideOffset={6}
-				>
+					sideOffset={6}>
 					{hideableColumns.map((column) => (
 						<DropdownMenu.CheckboxItem
 							key={column.id}
@@ -263,8 +259,7 @@ function ColumnsDropdown({
 							onCheckedChange={(checked) =>
 								onColumnVisibilityChange(column.id, checked === true)
 							}
-							onSelect={(event) => event.preventDefault()}
-						>
+							onSelect={(event) => event.preventDefault()}>
 							<span className="option-checkmark" aria-hidden="true">
 								<CheckIcon />
 							</span>

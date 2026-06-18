@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type {
 	DataGridColumn,
@@ -8,6 +8,7 @@ import type {
 	PageSize,
 	SortState,
 } from "./DataGrid.types";
+import { ErrorPage } from "@/pages/ErrorPage";
 import { NoResultsFoundPage } from "@/pages/NoResultsFound";
 import { Loader } from "../Loader/Loader";
 import { DataGridTable } from "./DataGridTable";
@@ -17,11 +18,8 @@ import "./DataGrid.css";
 
 const DEFAULT_FILTERS: DataGridFilters = {
 	search: "",
-	statuses: [],
-	priorities: [],
-	categories: [],
-	dateFrom: "",
-	dateTo: "",
+	multiSelect: {},
+	dateRanges: {},
 };
 
 function getColumnValue<T>(
@@ -37,20 +35,7 @@ function getColumnValue<T>(
 	return typeof value === "string" ? value : undefined;
 }
 
-function getFilterColumn<T>(
-	columns: DataGridColumn<T>[],
-	filterKey: NonNullable<DataGridColumn<T>["filterKey"]>,
-) {
-	return columns.find(
-		(column) => column.filterable === true && column.filterKey === filterKey,
-	);
-}
-
-function getUniqueOptions<T>(data: T[], column: DataGridColumn<T> | undefined) {
-	if (!column) {
-		return [];
-	}
-
+function getUniqueOptions<T>(data: T[], column: DataGridColumn<T>) {
 	return Array.from(
 		new Set(
 			data
@@ -58,6 +43,15 @@ function getUniqueOptions<T>(data: T[], column: DataGridColumn<T> | undefined) {
 				.filter(Boolean) as string[],
 		),
 	).sort((first, second) => first.localeCompare(second));
+}
+
+function getFilterColumns<T>(
+	columns: DataGridColumn<T>[],
+	type: NonNullable<DataGridColumn<T>["filter"]>["type"],
+) {
+	return columns.filter(
+		(column) => column.filterable === true && column.filter?.type === type,
+	);
 }
 
 function getDateValue(date?: string) {
@@ -83,10 +77,8 @@ function filterRows<T extends DataGridFilterableRow>(
 	const searchableColumns = columns.filter(
 		(column) => column.searchable === true,
 	);
-	const categoryColumn = getFilterColumn(columns, "categories");
-	const statusColumn = getFilterColumn(columns, "statuses");
-	const priorityColumn = getFilterColumn(columns, "priorities");
-	const dateColumn = getFilterColumn(columns, "date");
+	const multiSelectColumns = getFilterColumns(columns, "multi-select");
+	const dateRangeColumns = getFilterColumns(columns, "date-range");
 
 	return data.filter((row) => {
 		const searchableText = searchableColumns
@@ -94,26 +86,43 @@ function filterRows<T extends DataGridFilterableRow>(
 				String(getColumnValue(row, column.filterAccessor) ?? "").toLowerCase(),
 			)
 			.join(" ");
-		const rowCategory = getColumnValue(row, categoryColumn?.filterAccessor);
-		const rowStatus = getColumnValue(row, statusColumn?.filterAccessor);
-		const rowPriority = getColumnValue(row, priorityColumn?.filterAccessor);
-		const rowDate = getDateValue(
-			getColumnValue(row, dateColumn?.filterAccessor),
-		);
 
-		return (
-			(searchTerm === "" || searchableText.includes(searchTerm)) &&
-			(filters.categories.length === 0 ||
-				(rowCategory !== undefined &&
-					filters.categories.includes(rowCategory))) &&
-			(filters.statuses.length === 0 ||
-				(rowStatus !== undefined && filters.statuses.includes(rowStatus))) &&
-			(filters.priorities.length === 0 ||
-				(rowPriority !== undefined &&
-					filters.priorities.includes(rowPriority))) &&
-			(filters.dateFrom === "" || rowDate >= filters.dateFrom) &&
-			(filters.dateTo === "" || rowDate <= filters.dateTo)
-		);
+		if (searchTerm !== "" && !searchableText.includes(searchTerm)) {
+			return false;
+		}
+
+		for (const column of multiSelectColumns) {
+			const filterKey = column.filter?.key;
+			const selectedValues = filterKey ? filters.multiSelect[filterKey] : [];
+			const rowValue = getColumnValue(row, column.filterAccessor);
+
+			if (
+				selectedValues?.length > 0 &&
+				(rowValue === undefined || !selectedValues.includes(rowValue))
+			) {
+				return false;
+			}
+		}
+
+		for (const column of dateRangeColumns) {
+			const filterKey = column.filter?.key;
+			const range = filterKey ? filters.dateRanges[filterKey] : undefined;
+			const rowDate = getDateValue(getColumnValue(row, column.filterAccessor));
+
+			if (!range) {
+				continue;
+			}
+
+			if (range.from !== "" && rowDate < range.from) {
+				return false;
+			}
+
+			if (range.to !== "" && rowDate > range.to) {
+				return false;
+			}
+		}
+
+		return true;
 	});
 }
 
@@ -127,6 +136,7 @@ export function DataGrid<T extends DataGridFilterableRow>({
 	const [pageSize, setPageSize] = useState<PageSize>(25);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [sortState, setSortState] = useState<SortState>(null);
+	const previousDataIdsRef = useRef(data.map((row) => row.id).join("|"));
 	const [hiddenColumnIds, setHiddenColumnIds] = useState<string[]>(() =>
 		columns
 			.filter((column) => column.visible === false)
@@ -142,30 +152,32 @@ export function DataGrid<T extends DataGridFilterableRow>({
 		canHide: column.enableHiding !== false,
 	}));
 
-	const categoryColumn = useMemo(
-		() => getFilterColumn(columns, "categories"),
-		[columns],
-	);
-	const statusColumn = useMemo(
-		() => getFilterColumn(columns, "statuses"),
-		[columns],
-	);
-	const priorityColumn = useMemo(
-		() => getFilterColumn(columns, "priorities"),
-		[columns],
-	);
+	const multiSelectFilters = useMemo(
+		() =>
+			getFilterColumns(columns, "multi-select").map((column) => {
+				const filterKey = column.filter?.key ?? column.id;
 
-	const categoryOptions = useMemo(
-		() => getUniqueOptions(data, categoryColumn),
-		[data, categoryColumn],
+				return {
+					key: filterKey,
+					label: column.filter?.label ?? column.label,
+					options: getUniqueOptions(data, column),
+					values: filters.multiSelect[filterKey] ?? [],
+				};
+			}),
+		[columns, data, filters.multiSelect],
 	);
-	const statusOptions = useMemo(
-		() => getUniqueOptions(data, statusColumn),
-		[data, statusColumn],
-	);
-	const priorityOptions = useMemo(
-		() => getUniqueOptions(data, priorityColumn),
-		[data, priorityColumn],
+	const dateRangeFilters = useMemo(
+		() =>
+			getFilterColumns(columns, "date-range").map((column) => {
+				const filterKey = column.filter?.key ?? column.id;
+
+				return {
+					key: filterKey,
+					label: column.filter?.label ?? column.label,
+					value: filters.dateRanges[filterKey] ?? { from: "", to: "" },
+				};
+			}),
+		[columns, filters.dateRanges],
 	);
 
 	const filteredData = useMemo(() => {
@@ -181,6 +193,18 @@ export function DataGrid<T extends DataGridFilterableRow>({
 	const safeCurrentPage = Math.min(currentPage, totalPages);
 	const startIndex = (safeCurrentPage - 1) * pageSize;
 	const paginatedData = sortedData.slice(startIndex, startIndex + pageSize);
+
+	useEffect(() => {
+		const nextDataIds = data.map((row) => row.id).join("|");
+
+		if (previousDataIdsRef.current === nextDataIds) {
+			return;
+		}
+
+		previousDataIdsRef.current = nextDataIds;
+		setCurrentPage(1);
+		setSortState(null);
+	}, [data]);
 
 	function handleFiltersChange(nextFilters: DataGridFilters) {
 		setFilters(nextFilters);
@@ -225,11 +249,16 @@ export function DataGrid<T extends DataGridFilterableRow>({
 	}
 
 	if (error) {
-		return <p role="alert">{error}</p>;
+		return <ErrorPage message={error} />;
 	}
 
 	if (data.length === 0) {
-		return <NoResultsFoundPage />;
+		return (
+			<NoResultsFoundPage
+				title="No data found"
+				message="There are no rows to display."
+			/>
+		);
 	}
 
 	return (
@@ -237,9 +266,8 @@ export function DataGrid<T extends DataGridFilterableRow>({
 			<FilterToolbar
 				filters={filters}
 				pageSize={pageSize}
-				categoryOptions={categoryOptions}
-				statusOptions={statusOptions}
-				priorityOptions={priorityOptions}
+				dateRangeFilters={dateRangeFilters}
+				multiSelectFilters={multiSelectFilters}
 				columnOptions={columnVisibilityOptions}
 				onFiltersChange={handleFiltersChange}
 				onPageSizeChange={handlePageSizeChange}
@@ -249,11 +277,14 @@ export function DataGrid<T extends DataGridFilterableRow>({
 
 			<section className="results-panel">
 				<header className="results-heading">
-					<h2>Events</h2>
+					<h2>Results</h2>
 				</header>
 
 				{filteredData.length === 0 ? (
-					<NoResultsFoundPage />
+					<NoResultsFoundPage
+						title="No results found"
+						message="No rows found for the specified filters. Please try changing the search criteria."
+					/>
 				) : (
 					<>
 						<DataGridTable
@@ -267,7 +298,7 @@ export function DataGrid<T extends DataGridFilterableRow>({
 							<p>
 								Showing {startIndex + 1}-
 								{Math.min(startIndex + pageSize, sortedData.length)} of{" "}
-								{sortedData.length} events
+								{sortedData.length} items
 							</p>
 							<div>
 								<button
