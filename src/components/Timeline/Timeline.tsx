@@ -8,7 +8,7 @@ import {
 } from "react";
 import { TimelineControls } from "./TimelineControls";
 import { TimelineGroup } from "./TimelineGroup";
-import type { TimelineProps, TimelineView } from "./Timeline.types";
+import type { TimelineItem, TimelineProps, TimelineView } from "./Timeline.types";
 import "./Timeline.css";
 
 const monthFormatter = new Intl.DateTimeFormat("en-US", {
@@ -67,12 +67,9 @@ function getOffsetDate(date: Date, view: TimelineView, direction: -1 | 1) {
 	return nextDate;
 }
 
-function sortEventsByDate(events: TimelineProps["events"]) {
-	return [...events].sort((firstEvent, secondEvent) => {
-		return (
-			new Date(firstEvent.date).getTime() -
-			new Date(secondEvent.date).getTime()
-		);
+function sortItemsByDate<T>(items: TimelineItem<T>[]) {
+	return [...items].sort((firstItem, secondItem) => {
+		return firstItem.date.getTime() - secondItem.date.getTime();
 	});
 }
 
@@ -87,17 +84,8 @@ function formatPeriodLabel(startDate: Date, endDate: Date, view: TimelineView) {
 	return `${shortDateFormatter.format(startDate)} - ${fullDateFormatter.format(inclusiveEndDate)}`;
 }
 
-function createAnnouncement(
-	groupLabel: string,
-	eventTitle: string,
-	itemIndex: number,
-	groupLength: number,
-) {
-	return `Focused ${groupLabel}, event ${itemIndex + 1} of ${groupLength}: ${eventTitle}.`;
-}
-
 function hasEventsInPeriod(
-	events: TimelineProps["events"],
+	items: TimelineItem<unknown>[],
 	date: Date,
 	view: TimelineView,
 ) {
@@ -105,16 +93,38 @@ function hasEventsInPeriod(
 	const startTime = period.startDate.getTime();
 	const endTime = period.endDate.getTime();
 
-	return events.some((event) => {
-		const eventTime = new Date(event.date).getTime();
+	return items.some((item) => {
+		const eventTime = item.date.getTime();
 
 		return eventTime >= startTime && eventTime < endTime;
 	});
 }
 
-export function Timeline({ events }: TimelineProps) {
+function normalizeTimelineDate(value: string | Date) {
+	return value instanceof Date ? value : new Date(value);
+}
+
+export function Timeline<T>({
+	items,
+	getId,
+	getDate,
+	getTitle,
+	renderPill,
+	emptyTitle,
+	itemLabel = "events",
+}: TimelineProps<T>) {
 	const [timelineView, setTimelineView] = useState<TimelineView>("week");
 	const [visibleDate, setVisibleDate] = useState(() => new Date());
+	const timelineItems = useMemo(
+		() =>
+			items.map((item) => ({
+				id: getId(item),
+				title: getTitle(item),
+				date: normalizeTimelineDate(getDate(item)),
+				item,
+			})),
+		[items, getDate, getId, getTitle],
+	);
 	const period = useMemo(
 		() => getTimelinePeriod(visibleDate, timelineView),
 		[visibleDate, timelineView],
@@ -127,38 +137,42 @@ export function Timeline({ events }: TimelineProps) {
 		const startTime = period.startDate.getTime();
 		const endTime = period.endDate.getTime();
 
-		return sortEventsByDate(events)
-			.filter((event) => {
-				const eventTime = new Date(event.date).getTime();
+		return sortItemsByDate(timelineItems)
+			.filter((item) => {
+				const eventTime = item.date.getTime();
 
 				return eventTime >= startTime && eventTime < endTime;
 			});
-	}, [events, period]);
+	}, [period, timelineItems]);
 	const isPreviousPeriodDisabled = useMemo(() => {
 		return !hasEventsInPeriod(
-			events,
+			timelineItems,
 			getOffsetDate(visibleDate, timelineView, -1),
 			timelineView,
 		);
-	}, [events, timelineView, visibleDate]);
+	}, [timelineItems, timelineView, visibleDate]);
 	const isNextPeriodDisabled = useMemo(() => {
 		return !hasEventsInPeriod(
-			events,
+			timelineItems,
 			getOffsetDate(visibleDate, timelineView, 1),
 			timelineView,
 		);
-	}, [events, timelineView, visibleDate]);
+	}, [timelineItems, timelineView, visibleDate]);
 	const groups = useMemo(() => groupEventsByDay(visibleEvents), [visibleEvents]);
+	const periodSummary =
+		groups.length === 0
+			? `No ${itemLabel} for ${periodLabel}.`
+			: `${visibleEvents.length} ${itemLabel} for ${periodLabel}`;
+	const emptyStateTitle = emptyTitle ?? `No ${itemLabel} scheduled`;
 	const [storedGroupIndex, setStoredGroupIndex] = useState(0);
 	const [storedItemIndex, setStoredItemIndex] = useState(0);
-	const [announcement, setAnnouncement] = useState("");
 	const eventRefs = useRef(new Map<string, HTMLButtonElement>());
 	const shouldMoveFocusRef = useRef(false);
 	const focusedGroupIndex =
 		groups.length > 0 ? Math.min(storedGroupIndex, groups.length - 1) : 0;
 	const focusedGroup = groups[focusedGroupIndex];
 	const focusedItemIndex = focusedGroup
-		? Math.min(storedItemIndex, focusedGroup.events.length - 1)
+		? Math.min(storedItemIndex, focusedGroup.items.length - 1)
 		: 0;
 
 	useEffect(() => {
@@ -166,7 +180,7 @@ export function Timeline({ events }: TimelineProps) {
 			return;
 		}
 
-		const focusedEvent = groups[focusedGroupIndex]?.events[focusedItemIndex];
+		const focusedEvent = groups[focusedGroupIndex]?.items[focusedItemIndex];
 
 		if (!focusedEvent) {
 			return;
@@ -184,7 +198,7 @@ export function Timeline({ events }: TimelineProps) {
 
 	function updateFocusedEvent(groupIndex: number, itemIndex: number) {
 		const group = groups[groupIndex];
-		const event = group?.events[itemIndex];
+		const event = group?.items[itemIndex];
 
 		if (!group || !event) {
 			return;
@@ -192,14 +206,6 @@ export function Timeline({ events }: TimelineProps) {
 
 		setStoredGroupIndex(groupIndex);
 		setStoredItemIndex(itemIndex);
-		setAnnouncement(
-			createAnnouncement(
-				group.label,
-				event.title,
-				itemIndex,
-				group.events.length,
-			),
-		);
 	}
 
 	function handleEventKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
@@ -210,7 +216,7 @@ export function Timeline({ events }: TimelineProps) {
 		}
 
 		if (event.key === "ArrowRight") {
-			if (focusedItemIndex >= currentGroup.events.length - 1) {
+			if (focusedItemIndex >= currentGroup.items.length - 1) {
 				return;
 			}
 
@@ -239,7 +245,7 @@ export function Timeline({ events }: TimelineProps) {
 			const nextGroup = groups[focusedGroupIndex + 1];
 			const nextItemIndex = Math.min(
 				focusedItemIndex,
-				nextGroup.events.length - 1,
+				nextGroup.items.length - 1,
 			);
 
 			event.preventDefault();
@@ -256,7 +262,7 @@ export function Timeline({ events }: TimelineProps) {
 			const previousGroup = groups[focusedGroupIndex - 1];
 			const previousItemIndex = Math.min(
 				focusedItemIndex,
-				previousGroup.events.length - 1,
+				previousGroup.items.length - 1,
 			);
 
 			event.preventDefault();
@@ -307,12 +313,14 @@ export function Timeline({ events }: TimelineProps) {
 				<div className="timeline-heading">
 					<div>
 						<h2 id="timeline-heading">Timeline</h2>
-						<p>No events for {periodLabel}.</p>
+						<p aria-live="polite" aria-atomic="true">
+							{periodSummary}
+						</p>
 					</div>
 					{timelineControls}
 				</div>
 				<div className="timeline-empty-state">
-					<h3>No events scheduled</h3>
+					<h3>{emptyStateTitle}</h3>
 					<p>Use the arrows to browse another {timelineView}.</p>
 				</div>
 			</section>
@@ -324,15 +332,11 @@ export function Timeline({ events }: TimelineProps) {
 			<div className="timeline-heading">
 				<div>
 					<h2 id="timeline-heading">Timeline</h2>
-					<p>
-						{visibleEvents.length} events for {periodLabel}
+					<p aria-live="polite" aria-atomic="true">
+						{periodSummary}
 					</p>
 				</div>
 				{timelineControls}
-			</div>
-
-			<div className="timeline-sr-only" aria-live="polite">
-				{announcement}
 			</div>
 
 			<div className="timeline-groups">
@@ -346,6 +350,7 @@ export function Timeline({ events }: TimelineProps) {
 						onEventFocus={updateFocusedEvent}
 						onEventKeyDown={handleEventKeyDown}
 						setEventRef={setEventRef}
+						renderPill={renderPill}
 					/>
 				))}
 			</div>

@@ -1,5 +1,7 @@
-import type { TimelineDayGroup } from "@/components/Timeline/Timeline.types";
-import type { Event } from "@/types/event";
+import type {
+	TimelineDayGroup,
+	TimelineItem,
+} from "@/components/Timeline/Timeline.types";
 
 const dayLabelFormatter = new Intl.DateTimeFormat("en-US", {
 	month: "long",
@@ -15,11 +17,13 @@ function getDayKey(date: Date) {
 	return `${year}-${month}-${day}`;
 }
 
-export function groupEventsByDay(events: Event[]): TimelineDayGroup[] {
-	const groups = new Map<string, TimelineDayGroup>();
+export function groupEventsByDay<T>(
+	items: TimelineItem<T>[],
+): TimelineDayGroup<T>[] {
+	const groups = new Map<string, TimelineDayGroup<T>>();
 
-	for (const event of events) {
-		const eventDate = new Date(event.date);
+	for (const item of items) {
+		const eventDate = item.date;
 		const dayDate = new Date(
 			eventDate.getFullYear(),
 			eventDate.getMonth(),
@@ -29,7 +33,7 @@ export function groupEventsByDay(events: Event[]): TimelineDayGroup[] {
 		const group = groups.get(key);
 
 		if (group) {
-			group.events.push(event);
+			group.items.push(item);
 			continue;
 		}
 
@@ -37,7 +41,7 @@ export function groupEventsByDay(events: Event[]): TimelineDayGroup[] {
 			key,
 			label: dayLabelFormatter.format(dayDate),
 			date: dayDate,
-			events: [event],
+			items: [item],
 		});
 	}
 
@@ -47,11 +51,8 @@ export function groupEventsByDay(events: Event[]): TimelineDayGroup[] {
 		})
 		.map((group) => ({
 			...group,
-			events: [...group.events].sort((firstEvent, secondEvent) => {
-				return (
-					new Date(firstEvent.date).getTime() -
-					new Date(secondEvent.date).getTime()
-				);
+			items: [...group.items].sort((firstItem, secondItem) => {
+				return firstItem.date.getTime() - secondItem.date.getTime();
 			}),
 		}));
 }
