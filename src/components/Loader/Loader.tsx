@@ -2,7 +2,7 @@ import "./Loader.css";
 
 export function Loader() {
 	return (
-		<div className="loading-state">
+		<div className="loading-state" role="status">
 			<div className="spinner-stage">
 				<div className="spinner-ring" />
 			</div>
