@@ -1,4 +1,3 @@
-import { groupEventsByDay } from "@/utils/groupEventsByDay";
 import {
 	useEffect,
 	useMemo,
@@ -8,7 +7,12 @@ import {
 } from "react";
 import { TimelineControls } from "./TimelineControls";
 import { TimelineGroup } from "./TimelineGroup";
-import type { TimelineItem, TimelineProps, TimelineView } from "./Timeline.types";
+import type {
+	TimelineGroup as TimelineGroupModel,
+	TimelineItem,
+	TimelineProps,
+	TimelineView,
+} from "./Timeline.types";
 import "./Timeline.css";
 
 const monthFormatter = new Intl.DateTimeFormat("en-US", {
@@ -55,21 +59,15 @@ function getTimelinePeriod(date: Date, view: TimelineView) {
 	return { startDate, endDate };
 }
 
-function getOffsetDate(date: Date, view: TimelineView, direction: -1 | 1) {
-	const nextDate = new Date(date);
-
-	if (view === "week") {
-		nextDate.setDate(date.getDate() + direction * 7);
-		return nextDate;
-	}
-
-	nextDate.setMonth(date.getMonth() + direction);
-	return nextDate;
-}
-
 function sortItemsByDate<T>(items: TimelineItem<T>[]) {
 	return [...items].sort((firstItem, secondItem) => {
 		return firstItem.date.getTime() - secondItem.date.getTime();
+	});
+}
+
+function sortGroupsByDate<T>(groups: TimelineGroupModel<T>[]) {
+	return [...groups].sort((firstGroup, secondGroup) => {
+		return firstGroup.sortDate.getTime() - secondGroup.sortDate.getTime();
 	});
 }
 
@@ -100,16 +98,90 @@ function hasEventsInPeriod(
 	});
 }
 
+function getClosestPeriodWithEvents(
+	items: TimelineItem<unknown>[],
+	date: Date,
+	view: TimelineView,
+	direction: -1 | 1,
+) {
+	const sortedItems = sortItemsByDate(items);
+	const currentPeriod = getTimelinePeriod(date, view);
+	const candidateItems =
+		direction === -1
+			? sortedItems.filter((item) => item.date < currentPeriod.startDate).reverse()
+			: sortedItems.filter((item) => item.date >= currentPeriod.endDate);
+
+	for (const item of candidateItems) {
+		if (hasEventsInPeriod(items, item.date, view)) {
+			return item.date;
+		}
+	}
+
+	return null;
+}
+
 function normalizeTimelineDate(value: string | Date) {
 	return value instanceof Date ? value : new Date(value);
+}
+
+function groupTimelineItems<T>(
+	items: TimelineItem<T>[],
+	getGroupKey: (item: T, date: Date) => string,
+	getGroupLabel: (item: T, date: Date) => string,
+	getItemAriaLabel: (
+		item: T,
+		context: {
+			groupLabel: string;
+			groupLength: number;
+			itemIndex: number;
+		},
+	) => string,
+) {
+	const groups = new Map<string, TimelineGroupModel<T>>();
+
+	for (const item of items) {
+		const key = getGroupKey(item.item, item.date);
+		const group = groups.get(key);
+
+		if (group) {
+			group.items.push(item);
+			continue;
+		}
+
+		groups.set(key, {
+			key,
+			label: getGroupLabel(item.item, item.date),
+			sortDate: item.date,
+			items: [item],
+		});
+	}
+
+	return sortGroupsByDate(Array.from(groups.values())).map((group) => {
+		const sortedItems = sortItemsByDate(group.items);
+
+		return {
+			...group,
+			items: sortedItems.map((item, itemIndex) => ({
+				...item,
+				ariaLabel: getItemAriaLabel(item.item, {
+					groupLabel: group.label,
+					groupLength: sortedItems.length,
+					itemIndex,
+				}),
+			})),
+		};
+	});
 }
 
 export function Timeline<T>({
 	items,
 	getId,
 	getDate,
-	getTitle,
-	renderPill,
+	getGroupKey,
+	getGroupLabel,
+	getItemAriaLabel,
+	renderItemTitle,
+	renderItemBody,
 	emptyTitle,
 	itemLabel = "events",
 }: TimelineProps<T>) {
@@ -117,13 +189,17 @@ export function Timeline<T>({
 	const [visibleDate, setVisibleDate] = useState(() => new Date());
 	const timelineItems = useMemo(
 		() =>
-			items.map((item) => ({
-				id: getId(item),
-				title: getTitle(item),
-				date: normalizeTimelineDate(getDate(item)),
-				item,
-			})),
-		[items, getDate, getId, getTitle],
+			items.map((item) => {
+				const date = normalizeTimelineDate(getDate(item));
+
+				return {
+					id: getId(item),
+					date,
+					ariaLabel: "",
+					item,
+				};
+			}),
+		[items, getDate, getId],
 	);
 	const period = useMemo(
 		() => getTimelinePeriod(visibleDate, timelineView),
@@ -145,20 +221,35 @@ export function Timeline<T>({
 			});
 	}, [period, timelineItems]);
 	const isPreviousPeriodDisabled = useMemo(() => {
-		return !hasEventsInPeriod(
-			timelineItems,
-			getOffsetDate(visibleDate, timelineView, -1),
-			timelineView,
+		return (
+			getClosestPeriodWithEvents(
+				timelineItems,
+				visibleDate,
+				timelineView,
+				-1,
+			) === null
 		);
 	}, [timelineItems, timelineView, visibleDate]);
 	const isNextPeriodDisabled = useMemo(() => {
-		return !hasEventsInPeriod(
-			timelineItems,
-			getOffsetDate(visibleDate, timelineView, 1),
-			timelineView,
+		return (
+			getClosestPeriodWithEvents(
+				timelineItems,
+				visibleDate,
+				timelineView,
+				1,
+			) === null
 		);
 	}, [timelineItems, timelineView, visibleDate]);
-	const groups = useMemo(() => groupEventsByDay(visibleEvents), [visibleEvents]);
+	const groups = useMemo(
+		() =>
+			groupTimelineItems(
+				visibleEvents,
+				getGroupKey,
+				getGroupLabel,
+				getItemAriaLabel,
+			),
+		[visibleEvents, getGroupKey, getGroupLabel, getItemAriaLabel],
+	);
 	const periodSummary =
 		groups.length === 0
 			? `No ${itemLabel} for ${periodLabel}.`
@@ -272,11 +363,21 @@ export function Timeline<T>({
 	}
 
 	function handlePreviousPeriod() {
-		setVisibleDate((currentDate) => getOffsetDate(currentDate, timelineView, -1));
+		setVisibleDate((currentDate) => {
+			return (
+				getClosestPeriodWithEvents(timelineItems, currentDate, timelineView, -1) ??
+				currentDate
+			);
+		});
 	}
 
 	function handleNextPeriod() {
-		setVisibleDate((currentDate) => getOffsetDate(currentDate, timelineView, 1));
+		setVisibleDate((currentDate) => {
+			return (
+				getClosestPeriodWithEvents(timelineItems, currentDate, timelineView, 1) ??
+				currentDate
+			);
+		});
 	}
 
 	function handleViewChange(nextView: TimelineView) {
@@ -350,7 +451,8 @@ export function Timeline<T>({
 						onEventFocus={updateFocusedEvent}
 						onEventKeyDown={handleEventKeyDown}
 						setEventRef={setEventRef}
-						renderPill={renderPill}
+						renderItemTitle={renderItemTitle}
+						renderItemBody={renderItemBody}
 					/>
 				))}
 			</div>

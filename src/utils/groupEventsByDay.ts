@@ -1,5 +1,5 @@
 import type {
-	TimelineDayGroup,
+	TimelineGroup,
 	TimelineItem,
 } from "@/components/Timeline/Timeline.types";
 
@@ -19,8 +19,8 @@ function getDayKey(date: Date) {
 
 export function groupEventsByDay<T>(
 	items: TimelineItem<T>[],
-): TimelineDayGroup<T>[] {
-	const groups = new Map<string, TimelineDayGroup<T>>();
+): TimelineGroup<T>[] {
+	const groups = new Map<string, TimelineGroup<T>>();
 
 	for (const item of items) {
 		const eventDate = item.date;
@@ -40,14 +40,14 @@ export function groupEventsByDay<T>(
 		groups.set(key, {
 			key,
 			label: dayLabelFormatter.format(dayDate),
-			date: dayDate,
+			sortDate: dayDate,
 			items: [item],
 		});
 	}
 
 	return Array.from(groups.values())
 		.sort((firstGroup, secondGroup) => {
-			return firstGroup.date.getTime() - secondGroup.date.getTime();
+			return firstGroup.sortDate.getTime() - secondGroup.sortDate.getTime();
 		})
 		.map((group) => ({
 			...group,

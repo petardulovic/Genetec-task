@@ -216,7 +216,7 @@
 	box-shadow: 0 0 0 3px rgba(29, 114, 232, 0.12);
 }
 
-.timeline-event-time {
+.timeline-event-title {
 	color: #0b63ce;
 	font-size: 13px;
 	font-weight: 800;
@@ -231,7 +231,7 @@
 	min-width: 0;
 }
 
-.timeline-event-title {
+.timeline-event-name {
 	overflow: hidden;
 	color: #111827;
 	font-size: 14px;

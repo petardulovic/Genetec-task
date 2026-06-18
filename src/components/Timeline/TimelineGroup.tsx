@@ -1,4 +1,4 @@
-import { TimelineEventCard } from "./TimelineEventCard";
+import { TimelineCard } from "./TimelineCard";
 import type { TimelineGroupProps } from "./Timeline.types";
 
 export function TimelineGroup<T>({
@@ -9,7 +9,8 @@ export function TimelineGroup<T>({
 	onEventFocus,
 	onEventKeyDown,
 	setEventRef,
-	renderPill,
+	renderItemTitle,
+	renderItemBody,
 }: TimelineGroupProps<T>) {
 	return (
 		<section
@@ -23,17 +24,16 @@ export function TimelineGroup<T>({
 
 					return (
 						<li key={timelineItem.id} className="timeline-event">
-							<TimelineEventCard
+							<TimelineCard
 								timelineItem={timelineItem}
-								groupLabel={group.label}
-								groupLength={group.items.length}
 								groupIndex={groupIndex}
 								itemIndex={itemIndex}
 								isFocused={isFocused}
 								onEventFocus={onEventFocus}
 								onEventKeyDown={onEventKeyDown}
 								setEventRef={setEventRef}
-								renderPill={renderPill}
+								renderItemTitle={renderItemTitle}
+								renderItemBody={renderItemBody}
 							/>
 						</li>
 					);

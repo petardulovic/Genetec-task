@@ -1,7 +1,6 @@
 import { DataGrid } from "@/components/DataGrid/DataGrid";
 import { AddOrEditEventForm } from "@/components/EventForm/AddOrEditEventForm";
-import { Pill } from "@/components/Pill/Pill";
-import { Timeline } from "@/components/Timeline/Timeline";
+import { EventTimeline } from "@/components/EventTimeline/EventTimeline";
 import { Toast } from "@/components/Toast/Toast";
 import { getEventColumns } from "@/data/eventColumns";
 import { generateMockEvents } from "@/utils/mockDataGenerator";
@@ -186,19 +185,7 @@ export function EventDashboardPage() {
 				error={gridError}
 			/>
 
-			<Timeline
-				items={events}
-				getId={(event) => event.id}
-				getDate={(event) => event.date}
-				getTitle={(event) => event.title}
-				renderPill={(event) => (
-					<>
-						<Pill group="category" value={event.category} />
-						<Pill group="status" value={event.status} />
-						<Pill group="priority" value={event.priority} />
-					</>
-				)}
-			/>
+			<EventTimeline events={events} />
 			{isEventFormOpen ? (
 				<AddOrEditEventForm
 					key={selectedEvent?.id ?? "new-event"}
